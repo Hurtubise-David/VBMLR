@@ -309,7 +309,9 @@ class BlurFeatureExtractor:
         dx = ix - eyeCenter_1024_u
         dy = iy - eyeCenter_1024_v
 
-        feats8_raw = np.array(headpose6 + [dx, dy], dtype=np.float64)
+        # order (Mapping estimation): xi = [Rx,Ry,Rz, Tx,Ty,Tz, δx,δy]
+        Tx, Ty, Tz, Rx, Ry, Rz = headpose6
+        feats8_raw = np.array([Rx, Ry, Rz, Tx, Ty, Tz, dx, dy], dtype=np.float64)
         feats8 = self.normalize_plus_one(feats8_raw)
 
         dbg = {
