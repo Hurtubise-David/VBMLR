@@ -981,6 +981,21 @@ class MainWindow(QMainWindow):
         ok, frame = self.cap.read()
         if not ok or frame is None:
             return
+        
+        ci = dbg.get("ci", None)
+        if ci is not None:
+            ix, iy, fx, fy, fw, fh = ci
+            cv2.circle(disp, (ix, iy), 3, (0,255,255), -1)
+            cv2.rectangle(disp, (fx, fy), (fx+fw, fy+fh), (255,0,0), 2)
+
+        nb = dbg.get("nose_bbox", None)
+        if nb is not None:
+            x, y, w, h = nb
+            sx = Config.W_RESIZE / Config.CAM_W
+            sy = Config.H_RESIZE / Config.CAM_H
+            x = int(x * sx); y = int(y * sy)
+            w = int(w * sx); h = int(h * sy)
+            cv2.rectangle(disp, (x, y), (x+w, y+h), (0,0,255), 2)        
 
         feats, frame_1024, dbg = self.extractor.extract_features(frame)
         if frame_1024 is None:
