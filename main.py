@@ -702,6 +702,11 @@ class MainWindow(QMainWindow):
         if not ok or frame is None:
             return
         
+        dbg = {}
+        feats, frame_1024, dbg_extract = self.extractor.extract_features(frame)
+        if dbg_extract is not None:
+            dbg = dbg_extract
+        
         ci = dbg.get("ci", None)
         if ci is not None:
             ix, iy, fx, fy, fw, fh = ci
@@ -754,7 +759,7 @@ class MainWindow(QMainWindow):
         else:
             self.prediction = -1
 
-        # Debug print léger
+        # Debug print
         self._t += 1
         if (self._t % 25 == 0) and feats is not None:
             raw = dbg.get("raw", None)
