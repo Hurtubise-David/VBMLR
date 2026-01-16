@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout, QMessageBox, QFileDialog,
     QSpinBox
 )
+from centeriris import CenterIrisCpp
 
 # ============================================================
 # 1) CONFIG
