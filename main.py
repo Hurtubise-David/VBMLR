@@ -305,9 +305,9 @@ class BlurFeatureExtractor:
         if headpose6 is None:
             return None, frame_1024, {"reason": "headpose_fail", "ci": ci_1024, "nose_bbox": nose_bbox}
 
-        # 6) Disparity iris - face_center
-        dx = ix - headCenter_1024_u
-        dy = iy - headCenter_1024_v
+        # 6) Iris displacement δx,δy
+        dx = ix - eyeCenter_1024_u
+        dy = iy - eyeCenter_1024_v
 
         feats8_raw = np.array(headpose6 + [dx, dy], dtype=np.float64)
         feats8 = self.normalize_plus_one(feats8_raw)
