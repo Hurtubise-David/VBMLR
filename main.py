@@ -726,6 +726,8 @@ class MainWindow(QMainWindow):
         feats, frame_1024, dbg = self.extractor.extract_features(frame)
         if frame_1024 is None:
             frame_1024 = cv2.resize(frame, (Config.W_RESIZE, Config.H_RESIZE))
+
+        disp = frame_1024.copy()
         
         ci = dbg.get("ci", None)
         if ci is not None:
@@ -786,7 +788,6 @@ class MainWindow(QMainWindow):
         # =========================
         # Render overlay
         # =========================
-        disp = frame_1024.copy()
         det = dbg.get("det", None)
 
         if det is not None:
