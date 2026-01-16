@@ -273,7 +273,7 @@ class BlurFeatureExtractor:
 
         r = sigmas_640[y1:y2, x1:x2]
         if r.size == 0:
-            return None
+            return None, {"reason": "empty_nose_roi", "nose_bbox": nose_bbox}
         sigNose = float(np.mean(r))
 
         fx, fy = float(Config.FX), float(Config.FY)
