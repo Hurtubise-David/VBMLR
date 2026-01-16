@@ -28,7 +28,7 @@ def _load_vector_csv(path: str):
             pass
     return np.array(out, dtype=np.float64) if len(out) > 0 else None
 
-class VBMLRPredictOneVsOneCpp:
+class VBMLRPredictOneVsOne:
     """
       - get disc_{j}_{i}.txt
       - sm = dot(w[:8], feats[:8]) + bias(w[8])
