@@ -157,7 +157,9 @@ class BlurFeatureExtractor:
             self.nose_cascade = None
 
     @staticmethod
-    def blur_sigma_map(frame_bgr_640):
+    def blur_sigma_map_cpp(frame_bgr_640: np.ndarray,
+                        sigma: float = 1.0,
+                        lambd: float = 0.003) -> np.ndarray:
         """
         From paper (Eq. 15):
           ratio = ||∇I(σ1)|| / ||∇I(σ)|| = σ^2 / (σ^2 + σ0^2)
@@ -171,27 +173,38 @@ class BlurFeatureExtractor:
           G1 = ||∇(GaussianBlur(I, σ0))||
           ratio = G1 / G0
         """
-        gray = cv2.cvtColor(frame_bgr_640, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
-        sigma0 = float(Config.SIGMA0)
+        # img1BW = gray (float32), img2BW = GaussianBlur(img1BW, sigma)
+        gray = cv2.cvtColor(frame_bgr_640, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
-        blur = cv2.GaussianBlur(gray, (0, 0), sigma0)
+        k = int(4 * sigma + 1)
+        if k % 2 == 0:
+            k += 1
+        blur = cv2.GaussianBlur(gray, (k, k), sigmaX=sigma, sigmaY=sigma, borderType=cv2.BORDER_REFLECT)
 
-        gX0 = cv2.Sobel(gray,  cv2.CV_32F, 1, 0, ksize=3)
-        gY0 = cv2.Sobel(gray,  cv2.CV_32F, 0, 1, ksize=3)
-        gX1 = cv2.Sobel(blur,  cv2.CV_32F, 1, 0, ksize=3)
-        gY1 = cv2.Sobel(blur,  cv2.CV_32F, 0, 1, ksize=3)
+        # img1BW = Sobelx^2 + Sobely^2  (no sqrt)
+        gx1 = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_REFLECT)
+        gy1 = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_REFLECT)
+        g1 = gx1 * gx1 + gy1 * gy1
 
-        G0 = cv2.magnitude(gX0, gY0) + 1e-8
-        G1 = cv2.magnitude(gX1, gY1) + 1e-8
+        gx2 = cv2.Sobel(blur, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_REFLECT)
+        gy2 = cv2.Sobel(blur, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_REFLECT)
+        g2 = gx2 * gx2 + gy2 * gy2
 
-        ratio = G1 / G0  # in (0,1] ideally
-        ratio = np.clip(ratio, 1e-4, 1.0)
+        # Avoid div0 like C++ checks
+        eps = 1e-12
+        R = np.sqrt(np.maximum(g1, 0.0) / (np.maximum(g2, eps)))
 
-        sig = sigma0 * np.sqrt(np.maximum((1.0 / ratio) - 1.0, 0.0)).astype(np.float32)
+        # if R <= 1 and R > 0: val = 1 - exp(-lambda/(R^2)), R = val
+        # if R == 0: R = 0
+        m = (R > 0) & (R <= 1.0)
+        Rm = R[m]
+        R[m] = 1.0 - np.exp(-lambd / (Rm * Rm + eps))
 
-        # smooth a bit
-        sig = cv2.medianBlur(sig, 3)
-        return sig
+        # R = R - 1 ; R = sqrt(R) ; sigmas = sigma / R
+        R = R - 1.0
+        R = np.sqrt(np.maximum(R, eps))
+        sigmas = sigma / R
+        return sigmas.astype(np.float32)
 
     @staticmethod
     def depth_from_sigma_mm(sigma):
