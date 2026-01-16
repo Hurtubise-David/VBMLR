@@ -705,7 +705,7 @@ class MainWindow(QMainWindow):
         ci = dbg.get("ci", None)
         if ci is not None:
             ix, iy, fx, fy, fw, fh = ci
-            cv2.circle(disp, (ix, iy), 3, (0,255,255), -1)
+            cv2.circle(disp, (ix, iy), 4, (0,255,255), -1)
             cv2.rectangle(disp, (fx, fy), (fx+fw, fy+fh), (255,0,0), 2)
 
         nb = dbg.get("nose_bbox", None)
