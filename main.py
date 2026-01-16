@@ -382,7 +382,7 @@ class BlurFeatureExtractor:
         dx = ix - headCenter_1024_u
         dy = iy - headCenter_1024_v
 
-        feats8_raw = np.array(headpose6 + [dx/100.0, dy/100.0], dtype=np.float64)
+        feats8_raw = np.array(headpose6 + [dx, dy], dtype=np.float64)
         feats8 = self.normalize_plus_one(feats8_raw)
 
         dbg = {
