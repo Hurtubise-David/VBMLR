@@ -158,7 +158,7 @@ class BlurFeatureExtractor:
             self.nose_cascade = None
 
     @staticmethod
-    def blur_sigma_map_cpp(frame_bgr_640: np.ndarray,
+    def blur_sigma_map(frame_bgr_640: np.ndarray,
                         sigma: float = 1.0,
                         lambd: float = 0.003) -> np.ndarray:
         """
@@ -262,64 +262,40 @@ class BlurFeatureExtractor:
             return feats8 * 0.0
         return (feats8 / n) + 1.0
     
-    def blur_head_pose_estimation(self,
-                                sigmas_640: np.ndarray,
-                                nose_bbox: tuple[int,int,int,int],
-                                head_center_uv_640: tuple[float,float]):
-        # Constants
+    def blur_head_pose_estimation(self, sigmas_640, nose_bbox, head_center_uv_640):
+        from typing import Tuple
+        x1, y1, x2, y2 = nose_bbox  # coords absolues dans 640x480
+
+        r = sigmas_640[y1:y2, x1:x2]
+        if r.size == 0:
+            return None
+        sigNose = float(np.mean(r))
+
         fx, fy = float(Config.FX), float(Config.FY)
         cx, cy = float(Config.CX), float(Config.CY)
 
-        f = 4.033
-        v = 4.06579
-        k = 0.00135
+        f = float(Config.F_MM)
+        v = float(Config.f_MM)
+        k = float(Config.K_CAL)
 
-        x, y, w, h = nose_bbox
-        if w <= 0 or h <= 0:
-            return None, {"reason": "bad_nose_bbox"}
+        nose_Z = (f * v) / ((v - f) + (k * (f / 2.0) * sigNose))
 
-        H, W = sigmas_640.shape[:2]
-        x1 = max(0, x)
-        y1 = max(0, y)
-        x2 = min(W, x + w)
-        y2 = min(H, y + h)
-        if x2 <= x1 or y2 <= y1:
-            return None, {"reason": "nose_roi_oob"}
+        centerNose_x = 0.5 * (x1 + x2)
+        centerNose_y = 0.5 * (y1 + y2)
 
-        roi = sigmas_640[y1:y2, x1:x2]
-        sigNose = float(np.mean(roi))
-
-        # nose_Z = (f*v)/(v-f + (k*(f/2)*sigNose))
-        denom = (v - f) + (k * (f / 2.0) * sigNose)
-        if abs(denom) < 1e-12:
-            return None, {"reason": "denom_zero", "sigNose": sigNose}
-        nose_Z = (f * v) / denom
-
-        # centerNose = midpoint of bbox corners
-        centerNose_x = float(x + 0.5 * w)
-        centerNose_y = float(y + 0.5 * h)
-
-        # camera->world (nose_Y = (nose_Z/-fy)*(...)
         nose_X = (nose_Z / fx) * (centerNose_x - cx)
-        nose_Y = (nose_Z / (-fy)) * (centerNose_y - cy)
+        nose_Y = (nose_Z / -fy) * (centerNose_y - cy)
 
+        ref_u, ref_v = head_center_uv_640
         ref_Z = nose_Z + 150.0
-        u_ref, v_ref = head_center_uv_640
-        ref_X = (ref_Z / fx) * (float(u_ref) - cx)
-        ref_Y = (ref_Z / (-fy)) * (float(v_ref) - cy)
+        ref_X = (ref_Z / fx) * (ref_u - cx)
+        ref_Y = (ref_Z / -fy) * (ref_v - cy)
 
         R = np.array([nose_X - ref_X, nose_Y - ref_Y, nose_Z - ref_Z], dtype=np.float64)
-        N = float(np.linalg.norm(R)) + 1e-12
-        rhat = (R / N).tolist()
+        n = float(np.linalg.norm(R)) + 1e-12
+        R = R / n
 
-        # convert mm->cm 
-        ref_X_cm = ref_X / 10.0
-        ref_Y_cm = ref_Y / 10.0
-        ref_Z_cm = ref_Z / 10.0
-
-        headpose6 = [ref_X_cm, ref_Y_cm, ref_Z_cm, rhat[0], rhat[1], rhat[2]]
-        dbg = {"sigNose": sigNose, "nose_Z": nose_Z, "ref_Z": ref_Z}
-        return headpose6, dbg
+        return np.array([ref_X, ref_Y, ref_Z, R[0], R[1], R[2]], dtype=np.float64)
 
     
     def detect_nose_bbox_center_roi(self, frame_bgr_640):
