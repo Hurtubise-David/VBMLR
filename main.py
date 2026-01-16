@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QSpinBox
 )
 from centeriris import CenterIrisCpp
+from typing import Tuple
 
 # ============================================================
 # 1) CONFIG
