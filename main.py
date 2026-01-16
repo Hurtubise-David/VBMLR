@@ -12,8 +12,8 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout, QMessageBox, QFileDialog,
     QSpinBox
 )
-from centeriris import CenterIrisCpp
-from vbmlr.predict import VBMLRPredictOneVsOneCpp
+from centeriris import CenterIris
+from vbmlr.predict import VBMLRPredictOneVsOne
 from vbmlr.regression import train_vbmlr_all_pairs
 from vbmlr.io_utils import ensure_dir, write_csv_line
 
@@ -78,7 +78,7 @@ class Config:
 # ============================================================
 class BlurFeatureExtractor:
     def __init__(self):
-        self.ci = CenterIrisCpp()
+        self.ci = CenterIris()
 
         nose_path = Config.cascade_path("haarcascade_mcs_nose.xml")
         self.nose_cascade = cv2.CascadeClassifier(nose_path)

@@ -19,7 +19,7 @@ def cascade_path(local_name: str) -> str:
     return os.path.join(cv2.data.haarcascades, local_name)
 
 
-class CenterIrisCpp:
+class CenterIris:
     """
     Python clone aligned to old CenterIris.cpp logic:
       - resize to 1024x768
