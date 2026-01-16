@@ -21,7 +21,7 @@ class Config:
     CAM_W, CAM_H = 640, 480
     W_RESIZE, H_RESIZE = 1024, 768
 
-    # Intrinsics (idéalement: charge ton .yml)
+    # Intrinsics (TO DO need to create a calibrator and charge .yml)
     FX, FY = 600.0, 600.0
     CX, CY = 320.0, 240.0
 
@@ -1043,7 +1043,7 @@ class MainWindow(QMainWindow):
                   " pred=", self.prediction)
 
         # =========================
-        # Render overlay (nettoyé)
+        # Render overlay
         # =========================
         disp = frame_1024.copy()
         det = dbg.get("det", None)
