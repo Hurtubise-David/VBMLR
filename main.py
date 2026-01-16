@@ -479,7 +479,12 @@ class FaceEyeNoseDetector:
 # ============================================================
 class BlurFeatureExtractor:
     def __init__(self):
-        self.det = FaceEyeNoseDetector()
+        self.ci = CenterIrisCpp()
+
+        nose_path = Config.cascade_path("haarcascade_mcs_nose.xml")
+        self.nose_cascade = cv2.CascadeClassifier(nose_path)
+        if self.nose_cascade.empty():
+            self.nose_cascade = None
 
     @staticmethod
     def blur_sigma_map(frame_bgr_640):
