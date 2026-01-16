@@ -612,99 +612,50 @@ class BlurFeatureExtractor:
     
 
     def extract_features(self, frame_bgr_640):
-        det = self.det.detect_all(frame_bgr_640)
-        if det is None:
-            return None, None, {"reason": "no_face"}
+        # 1) CenterIris (1024x768)
+        ci_1024, frame_1024 = self.ci.center_iris(frame_bgr_640)
+        if ci_1024 is None:
+            return None, frame_1024, {"reason": "no_face_or_iris"}
 
-        resized = det["resized"]
-        face = det["face"]
-        nose_c = det.get("nose_c", None)
-        iris_L = det.get("iris_L", None)
-        iris_R = det.get("iris_R", None)
-        cL = det.get("canthus_L", None)
-        cR = det.get("canthus_R", None)
+        # 2) Nose bbox on 640 (fixed ROI)
+        nose_bbox = self.detect_nose_bbox_center_roi(frame_bgr_640)
+        if nose_bbox is None:
+            return None, frame_1024, {"reason": "no_nose", "ci": ci_1024}
 
-        if nose_c is None or cR is None:
-            return None, resized, {"reason": "missing_points", "det": det}
+        # 3) Sigma map on 640
+        sigmas = self.blur_sigma_map(frame_bgr_640) 
 
-        # Need at least one iris
-        if iris_L is None and iris_R is None:
-            return None, resized, {"reason": "no_iris", "det": det}
+        # 4) Head center: face center (1024) to coords 640
+        ix, iy, fx, fy, fw, fh = ci_1024
+        headCenter_1024_u = (fx + (fx + fw)) / 2.0
+        headCenter_1024_v = (fy + (fy + fh)) / 2.0
+        headCenter2_u = headCenter_1024_u * (Config.CAM_W / Config.W_RESIZE)
+        headCenter2_v = headCenter_1024_v * (Config.CAM_H / Config.H_RESIZE)
 
-        # sigma map on 640x480
-        sigmas = self.blur_sigma_map(frame_bgr_640)
+        # 5) Headpose from blur
+        headpose6, dbg_hp = self.blur_head_pose_estimation(sigmas, nose_bbox, (headCenter2_u, headCenter2_v))
+        if headpose6 is None:
+            return None, frame_1024, {"reason": "headpose_fail", "ci": ci_1024, "nose_bbox": nose_bbox}
 
-        # A,B,C in IMAGE (1024)
-        A_uv = (int(nose_c[0]), int(nose_c[1]))  # nose tip approx
+        # 6) Disparity iris - face_center
+        dx = ix - headCenter_1024_u
+        dy = iy - headCenter_1024_v
 
-        # If left canthus missing, fallback in face
-        if cL is not None:
-            B_uv = cL
-        else:
-            fx, fy, fw, fh = face
-            B_uv = (fx + int(0.35*fw), fy + int(0.45*fh))
-
-        C_uv = cR
-
-        head_uv = ((B_uv[0] + C_uv[0]) / 2.0, (B_uv[1] + C_uv[1]) / 2.0)
-
-        sA = self.sample_sigma(sigmas, A_uv[0], A_uv[1], win=11)
-        sB = self.sample_sigma(sigmas, B_uv[0], B_uv[1], win=11)
-        sC = self.sample_sigma(sigmas, C_uv[0], C_uv[1], win=11)
-        if sA is None or sB is None or sC is None:
-            return None, resized, {"reason": "sigma_sample_fail", "det": det}
-
-        zA = self.depth_from_sigma_mm(sA)
-        zB = self.depth_from_sigma_mm(sB)
-        zC = self.depth_from_sigma_mm(sC)
-        if zA is None or zB is None or zC is None:
-            return None, resized, {"reason": "depth_fail", "det": det, "sig": (sA, sB, sC)}
-
-        A = self.uv_to_xyz_cm(A_uv[0], A_uv[1], zA)
-        B = self.uv_to_xyz_cm(B_uv[0], B_uv[1], zB)
-        C = self.uv_to_xyz_cm(C_uv[0], C_uv[1], zC)
-        if A is None or B is None or C is None:
-            return None, resized, {"reason": "xyz_fail", "det": det}
-
-        AB = (B - A)
-        AC = (C - A)
-        cross = np.cross(AB, AC)
-        cn = float(np.linalg.norm(cross))
-        if cn < 1e-12:
-            R = np.zeros(3, dtype=np.float64)
-        else:
-            R = cross / cn
-
-        T = (A + B + C) / 3.0
-
-        # iris used (average if both available)
-        if iris_L is not None and iris_R is not None:
-            iris_u = 0.5 * (iris_L[0] + iris_R[0])
-            iris_v = 0.5 * (iris_L[1] + iris_R[1])
-        elif iris_R is not None:
-            iris_u, iris_v = iris_R
-        else:
-            iris_u, iris_v = iris_L
-
-        delta_x = float(iris_u - head_uv[0])
-        delta_y = float(iris_v - head_uv[1])
-
-        feats8_raw = np.array([T[0], T[1], T[2], R[0], R[1], R[2], delta_x, delta_y], dtype=np.float64)
+        feats8_raw = np.array(headpose6 + [dx/100.0, dy/100.0], dtype=np.float64)
         feats8 = self.normalize_plus_one(feats8_raw)
 
         dbg = {
-            "det": det,
+            "ci": ci_1024,
+            "nose_bbox": nose_bbox,
             "sigmas": sigmas,
-            "A_uv": A_uv, "B_uv": B_uv, "C_uv": C_uv,
-            "head_uv": head_uv,
-            "T": T, "R": R,
-            "delta": (delta_x, delta_y),
+            "headpose6": headpose6,
+            "delta": (dx, dy),
             "raw": feats8_raw,
             "feats": feats8,
-            "sigma_pts": (sA, sB, sC),
-            "z_mm": (zA, zB, zC),
+            "hp_dbg": dbg_hp,
         }
-        return feats8, resized, dbg
+        return feats8, frame_1024, dbg
+
 
 
 # ============================================================
