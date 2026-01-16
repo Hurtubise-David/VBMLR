@@ -490,7 +490,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("VBMLR - Eye Gaze Prediction")
 
         self.extractor = BlurFeatureExtractor()
-        self.predictor = None
+        self.predictor = VBMLRPredictOneVsOneCpp(base_dir=base, nb_classes=Config.NB_CLASSES)
 
         self.dataset_root = None
         self.disc_dir = None
