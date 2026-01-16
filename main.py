@@ -581,9 +581,15 @@ class MainWindow(QMainWindow):
         
         ci = dbg.get("ci", None)
         if ci is not None:
-            ix, iy, fx, fy, fw, fh = ci
-            cv2.circle(disp, (ix, iy), 4, (0,255,255), -1)
-            cv2.rectangle(disp, (fx, fy), (fx+fw, fy+fh), (255,0,0), 2)
+            if len(ci) >= 6:
+                ix, iy, fx, fy, fw, fh = ci[:6]
+                cv2.circle(disp, (int(ix), int(iy)), 4, (0, 255, 255), -1)
+                cv2.rectangle(disp, (int(fx), int(fy)), (int(fx+fw), int(fy+fh)), (255, 0, 0), 2)
+
+            # draw eye bbox
+            if len(ci) >= 10:
+                ex, ey, ew, eh = ci[6:10]
+                cv2.rectangle(disp, (int(ex), int(ey)), (int(ex+ew), int(ey+eh)), (255, 255, 0), 2)
 
         nb = dbg.get("nose_bbox", None)
         if nb is not None:
