@@ -13,6 +13,10 @@ from PyQt6.QtWidgets import (
     QSpinBox
 )
 from centeriris import CenterIrisCpp
+from vbmlr.predict import VBMLRPredictOneVsOneCpp
+from vbmlr.regression import train_vbmlr_all_pairs
+from vbmlr.io_utils import ensure_dir, write_csv_line
+
 from typing import Tuple
 
 # ============================================================
