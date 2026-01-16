@@ -264,7 +264,7 @@ class BlurFeatureExtractor:
     
     def blur_head_pose_estimation(self, sigmas_640, nose_bbox, head_center_uv_640):
         from typing import Tuple
-        x1, y1, x2, y2 = nose_bbox  # coords absolues dans 640x480
+        x1, y1, x2, y2 = nose_bbox  # absolute coords in 640x480
 
         r = sigmas_640[y1:y2, x1:x2]
         if r.size == 0:
