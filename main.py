@@ -332,7 +332,11 @@ class BlurFeatureExtractor:
             d = (cx-50.0)**2 + (cy-50.0)**2
             if d < best_d:
                 best_d = d
-                best = (x0 + int(x), y0 + int(y), int(w), int(h))
+                x1 = x0 + int(x)
+                y1 = y0 + int(y)
+                x2 = x1 + int(w)
+                y2 = y1 + int(h)
+                best = (x1, y1, x2, y2)
         return best
     
 
