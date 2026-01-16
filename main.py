@@ -300,7 +300,19 @@ class BlurFeatureExtractor:
         n = float(np.linalg.norm(R)) + 1e-12
         R = R / n
 
-        return np.array([ref_X, ref_Y, ref_Z, R[0], R[1], R[2]], dtype=np.float64)
+        # Return LIST (headpose6 + [dx,dy])
+        headpose6 = [float(ref_X), float(ref_Y), float(ref_Z), float(R[0]), float(R[1]), float(R[2])]
+
+        dbg = {
+            "sigNose": sigNose,
+            "nose_Z": float(nose_Z),
+            "nose_X": float(nose_X),
+            "nose_Y": float(nose_Y),
+            "ref_XYZ": (float(ref_X), float(ref_Y), float(ref_Z)),
+            "R": (float(R[0]), float(R[1]), float(R[2])),
+            "nose_bbox": nose_bbox,
+        }
+        return headpose6, dbg
 
     
     def detect_nose_bbox_center_roi(self, frame_bgr_640):
