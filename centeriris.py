@@ -4,6 +4,8 @@ import math
 import numpy as np
 import cv2
 
+from typing import Optional
+
 PI = math.pi
 
 
@@ -17,7 +19,7 @@ def cascade_path(local_name: str) -> str:
 
 class CenterIrisCpp:
     """
-    Python clone aligned to CenterIris.cpp logic:
+    Python clone aligned to old CenterIris.cpp logic:
       - resize to 1024x768
       - detect biggest face
       - compute RIGHT eye bbox with fixed ratios
@@ -31,7 +33,7 @@ class CenterIrisCpp:
       - output: [ix, iy, fx, fy, fw, fh] in 1024x768 coords
     """
 
-    def __init__(self, n_poly: int = 600, max_candidates: int | None = 600):
+    def __init__(self, n_poly: int = 600, max_candidates: Optional[int] = 600):
         face_path = cascade_path("haarcascade_frontalface_alt2.xml")
         self.face_cascade = cv2.CascadeClassifier(face_path)
         if self.face_cascade.empty():
