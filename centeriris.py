@@ -278,5 +278,5 @@ class CenterIris:
         ix = int(ex + iris_xy[0])
         iy = int(ey + iris_xy[1])
 
-        ci = [ix, iy, fx, fy, fw, fh]
+        ci = [ix, iy, fx, fy, fw, fh, ex, ey, ew, eh]
         return ci, resized
