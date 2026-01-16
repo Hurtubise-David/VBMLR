@@ -6,7 +6,7 @@
 
 This repository contains the official implementation of the research paper **"Real time eye-gaze estimation on a computer screen"**.
 
-It presents a robust, low-cost eye-tracking solution that operates on standard 2D webcams (like integrated laptop cameras) without requiring specialized hardware (IR) or complex calibration.
+It presents a low-cost eye-tracking solution that operates on standard 2D webcams (like integrated laptop cameras) without requiring training with massive amount of data, specialized hardware (IR) or complex calibration.
 
 ## Abstract
 
