@@ -737,12 +737,12 @@ class MainWindow(QMainWindow):
 
         nb = dbg.get("nose_bbox", None)
         if nb is not None:
-            x, y, w, h = nb
+            x1, y1, x2, y2 = nb
             sx = Config.W_RESIZE / Config.CAM_W
             sy = Config.H_RESIZE / Config.CAM_H
-            x = int(x * sx); y = int(y * sy)
-            w = int(w * sx); h = int(h * sy)
-            cv2.rectangle(disp, (x, y), (x+w, y+h), (0,0,255), 2)        
+            X1 = int(x1 * sx); Y1 = int(y1 * sy)
+            X2 = int(x2 * sx); Y2 = int(y2 * sy)
+            cv2.rectangle(disp, (X1, Y1), (X2, Y2), (0, 0, 255), 2)     
 
         if self.mode == "RECORDING":
             if self.cooldown > 0:
