@@ -20,7 +20,7 @@ from vbmlr.io_utils import ensure_dir, write_csv_line
 from typing import Tuple
 
 # ============================================================
-# 1) CONFIG
+# CONFIG
 # ============================================================
 class Config:
     CAM_W, CAM_H = 640, 480
@@ -74,88 +74,7 @@ class Config:
 
 
 # ============================================================
-# 2) I/O Tools
-# ============================================================
-def ensure_dir(p: str):
-    os.makedirs(p, exist_ok=True)
-
-def write_csv_line(path: str, arr):
-    s = ",".join([f"{float(x):.10g}" for x in arr])
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(s + "\n")
-
-def read_features_file(path: str, expected_dim=8):
-    if not os.path.isfile(path):
-        return None
-    txt = open(path, "r", encoding="utf-8", errors="ignore").read().strip()
-    if not txt:
-        return None
-    toks = [t for t in txt.replace("\n", ",").split(",") if t.strip() != ""]
-    vals = np.array([float(t) for t in toks], dtype=np.float64)
-    if vals.size % expected_dim == 0:
-        return vals.reshape(-1, expected_dim)
-    if vals.size >= expected_dim:
-        return vals[:expected_dim][None, :]
-    return None
-
-
-# ============================================================
-# 3) PREDICT (one-vs-one)
-# ============================================================
-def _logistic_safe(s: float) -> float:
-    if s >= 0.0:
-        return 1.0 / (1.0 + math.exp(-s))
-    e = math.exp(s)
-    return e / (1.0 + e)
-
-def _load_vector_csv(path: str):
-    if not os.path.isfile(path):
-        return None
-    txt = open(path, "r", encoding="utf-8", errors="ignore").read().strip()
-    if not txt:
-        return None
-    toks = [t for t in txt.replace("\n", ",").split(",") if t.strip() != ""]
-    return np.array([float(t) for t in toks], dtype=np.float64)
-
-class VBMLRPredictOneVsOne:
-    def __init__(self, base_dir: str, nb_classes: int = 9):
-        self.base_dir = base_dir
-        self.C = nb_classes
-        self.disc = [[None for _ in range(self.C)] for _ in range(self.C)]
-        self.reload()
-
-    def reload(self):
-        for j in range(1, self.C + 1):
-            for i in range(1, self.C + 1):
-                if i == j:
-                    continue
-                path = os.path.join(self.base_dir, f"disc_{j}_{i}.txt")
-                self.disc[j-1][i-1] = _load_vector_csv(path)
-
-    @staticmethod
-    def _dot_bias_last(w, x):
-        d = min(len(x), len(w) - 1)
-        return float(np.dot(w[:d], x[:d]) + w[d])
-
-    def predict(self, feats):
-        votes = np.zeros(self.C, dtype=np.float64)
-        for j in range(1, self.C + 1):
-            vj = 0.0
-            for i in range(1, self.C + 1):
-                if i == j:
-                    continue
-                w = self.disc[j-1][i-1]
-                if w is None:
-                    continue
-                sm = self._dot_bias_last(w, feats)
-                p = _logistic_safe(sm)
-                vj += 1.0 if (p <= 0.5) else 0.0
-            votes[j-1] = vj
-        return int(np.argmax(votes)) + 1
-
-
-# ============================================================
-# 5) Blur -> sigma map -> depth -> Head pose + iris displacement
+#  Blur -> sigma map -> depth -> Head pose + iris displacement
 # ============================================================
 class BlurFeatureExtractor:
     def __init__(self):
@@ -402,87 +321,8 @@ class BlurFeatureExtractor:
         return feats8, frame_1024, dbg
 
 
-
 # ============================================================
-# 6) VBMLR TRAINER
-# ============================================================
-def _lambda_xi(xi):
-    xi = np.asarray(xi, dtype=np.float64)
-    out = np.empty_like(xi)
-    small = xi < 1e-9
-    out[small] = 1.0 / 8.0
-    xs = xi[~small]
-    out[~small] = np.tanh(xs / 2.0) / (4.0 * xs)
-    return out
-
-def vb_logistic_fit(X, y, alpha=1.0, max_iter=200, tol=1e-6):
-    X = np.asarray(X, dtype=np.float64)
-    y = np.asarray(y, dtype=np.float64).reshape(-1)
-
-    N, D = X.shape
-    Xb = np.hstack([X, np.ones((N, 1), dtype=np.float64)])
-    Db = D + 1
-
-    mu = np.zeros(Db, dtype=np.float64)
-    Sigma = np.eye(Db, dtype=np.float64) / alpha
-    xi = np.ones(N, dtype=np.float64)
-
-    I = np.eye(Db, dtype=np.float64)
-
-    for _ in range(max_iter):
-        lam = _lambda_xi(xi)
-        XL = Xb * (np.sqrt(2.0 * lam)[:, None])
-        A = (alpha * I) + (XL.T @ XL)
-        Sigma_new = np.linalg.inv(A)
-
-        t = (y - 0.5)
-        mu_new = Sigma_new @ (Xb.T @ t)
-
-        S = Sigma_new + np.outer(mu_new, mu_new)
-        xi_new = np.sqrt(np.einsum("nd,dd,nd->n", Xb, S, Xb) + 1e-12)
-
-        dm = np.linalg.norm(mu_new - mu) / (np.linalg.norm(mu) + 1e-9)
-        mu, Sigma, xi = mu_new, Sigma_new, xi_new
-        if dm < tol:
-            break
-
-    return mu
-
-def train_vbmlr_all_pairs(dataset_dir: str, out_dir: str, nb_classes=9, min_samples=10, status_cb=None):
-    ensure_dir(out_dir)
-    Xc = {}
-    for c in range(1, nb_classes+1):
-        p = os.path.join(dataset_dir, "features", f"class{c}.txt")
-        X = read_features_file(p, expected_dim=8)
-        if X is None or X.shape[0] < min_samples:
-            raise RuntimeError(f"Not enough samples for class{c}: {p}")
-        Xc[c] = X
-
-    total = nb_classes * (nb_classes - 1)
-    k = 0
-
-    for j in range(1, nb_classes+1):
-        for i in range(1, nb_classes+1):
-            if i == j:
-                continue
-            k += 1
-            if status_cb:
-                status_cb(f"Training disc_{j}_{i}.txt ({k}/{total})")
-
-            Xj = Xc[j]
-            Xi = Xc[i]
-            X = np.vstack([Xj, Xi])
-            y = np.hstack([np.zeros(Xj.shape[0]), np.ones(Xi.shape[0])])  # j=0, i=1
-
-            w = vb_logistic_fit(X, y, alpha=1.0, max_iter=200, tol=1e-6)
-
-            outp = os.path.join(out_dir, f"disc_{j}_{i}.txt")
-            with open(outp, "w", encoding="utf-8") as f:
-                f.write(",".join([f"{float(v):.12g}" for v in w]) + "\n")
-
-
-# ============================================================
-# 7) UI
+#  UI
 # ============================================================
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -490,7 +330,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("VBMLR - Eye Gaze Prediction")
 
         self.extractor = BlurFeatureExtractor()
-        self.predictor = VBMLRPredictOneVsOneCpp(base_dir=base, nb_classes=Config.NB_CLASSES)
+        self.predictor = None
 
         self.dataset_root = None
         self.disc_dir = None
