@@ -290,7 +290,7 @@ class BlurFeatureExtractor:
         sigmas = self.blur_sigma_map(frame_bgr_640) 
 
         # 4) Head center: face center (1024) to coords 640
-        ix, iy, fx, fy, fw, fh = ci_1024
+        ix, iy, fx, fy, fw, fh, ex, ey, ew, eh = ci_1024
         headCenter_1024_u = (fx + (fx + fw)) / 2.0
         headCenter_1024_v = (fy + (fy + fh)) / 2.0
         headCenter2_u = headCenter_1024_u * (Config.CAM_W / Config.W_RESIZE)
