@@ -296,6 +296,10 @@ class BlurFeatureExtractor:
         headCenter2_u = headCenter_1024_u * (Config.CAM_W / Config.W_RESIZE)
         headCenter2_v = headCenter_1024_v * (Config.CAM_H / Config.H_RESIZE)
 
+        # Eye center (1024) for δx,δy (iris displacement)
+        eyeCenter_1024_u = ex + ew / 2.0
+        eyeCenter_1024_v = ey + eh / 2.0
+
         # 5) Headpose from blur
         headpose6, dbg_hp = self.blur_head_pose_estimation(sigmas, nose_bbox, (headCenter2_u, headCenter2_v))
         if headpose6 is None:
