@@ -4,8 +4,7 @@ import numpy as np
 import math
 
 def _cal_prob_cpp(sm: float) -> float:
-    # C++: exp(-sm)/(1+exp(-sm)) = sigmoid(-sm)
-    # version stable:
+    # exp(-sm)/(1+exp(-sm)) = sigmoid(-sm)
     if sm >= 0:
         e = math.exp(-sm)
         return e / (1.0 + e)
@@ -20,7 +19,7 @@ def _load_vector_csv(path: str):
     if not txt:
         return None
     toks = [t for t in txt.replace("\n", ",").split(",") if t.strip() != ""]
-    # C++ atof tolère pas mal tout; on ignore tokens non-numériques
+    # atof; ignore no-numeric tokens
     out = []
     for t in toks:
         try:
@@ -31,11 +30,10 @@ def _load_vector_csv(path: str):
 
 class VBMLRPredictOneVsOneCpp:
     """
-    Reproduit Predict.cpp:
-      - charge disc_{j}_{i}.txt
+      - get disc_{j}_{i}.txt
       - sm = dot(w[:8], feats[:8]) + bias(w[8])
       - SH = sigmoid(-sm)
-      - vote selon i<j vs i>j
+      - vote i<j vs i>j
     """
     def __init__(self, base_dir: str, nb_classes: int = 9):
         self.base_dir = base_dir
