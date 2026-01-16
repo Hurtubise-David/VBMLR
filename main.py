@@ -577,6 +577,39 @@ class BlurFeatureExtractor:
         if n < 1e-12:
             return feats8 * 0.0
         return (feats8 / n) + 1.0
+    
+    def detect_nose_bbox_center_roi(self, frame_bgr_640):
+        if self.nose_cascade is None:
+            return None
+
+        x0, y0 = Config.NOSE_ROI_X, Config.NOSE_ROI_Y
+        roi = frame_bgr_640[y0:y0+Config.NOSE_ROI_H, x0:x0+Config.NOSE_ROI_W]
+        if roi.size == 0:
+            return None
+
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+
+        noses = self.nose_cascade.detectMultiScale(
+            gray, 1.2, 3,
+            flags=cv2.CASCADE_DO_CANNY_PRUNING,
+            minSize=(25, 25)
+        )
+        if len(noses) == 0:
+            return None
+
+        # choose ROI center 100x100
+        best = None
+        best_d = 1e18
+        for (x, y, w, h) in noses:
+            cx = x + w/2.0
+            cy = y + h/2.0
+            d = (cx-50.0)**2 + (cy-50.0)**2
+            if d < best_d:
+                best_d = d
+                best = (x0 + int(x), y0 + int(y), int(w), int(h))
+        return best
+    
 
     def extract_features(self, frame_bgr_640):
         det = self.det.detect_all(frame_bgr_640)
