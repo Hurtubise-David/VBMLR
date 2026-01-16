@@ -25,15 +25,15 @@ class Config:
     FX, FY = 600.0, 600.0
     CX, CY = 320.0, 240.0
 
-    # Blur scale (sigma0) utilisé pour "ajouter" un blur connu
+    # Blur scale (sigma0) add know blur
     SIGMA0 = 2.0
 
-    # Paramètres blur->depth (Eq. 9 du papier)
-    F_MM = 4.033      # F (focal length) en mm
-    f_MM = 4.0676     # f (distance lentille->image plane) en mm
+    # blur->depth (Eq. 9 from paper)
+    F_MM = 4.033      # F (focal length) mm
+    f_MM = 4.0676     # f (distance lense->image plane) mm
     F_NUM = 2.8       # f-number
-    K_CAL = 0.0013    # constante k
-    U_MM = 500.0      # u (position de focus parfaite) - utilisé dans l'article (expériences)
+    K_CAL = 0.0013    # constant k
+    U_MM = 500.0      # u (perfect focus position)
 
     NB_CLASSES = 9
 
@@ -64,7 +64,7 @@ class Config:
 
 
 # ============================================================
-# 2) OUTILS I/O
+# 2) I/O Tools
 # ============================================================
 def ensure_dir(p: str):
     os.makedirs(p, exist_ok=True)
@@ -145,15 +145,15 @@ class VBMLRPredictOneVsOne:
 
 
 # ============================================================
-# 4) Face / Eyes / Nose + Iris (paper-aligned spirit)
+# 4) Face / Eyes / Nose + Iris 
 # ============================================================
 class FaceEyeNoseDetector:
     """
     - Face (Viola-Jones)
     - Eyes (Viola-Jones)
-    - Nose (cascade si dispo; sinon fallback géométrique)
-    - Iris centre via radial derivative search (ton approche)
-    + Stabilisation temporelle (iris + nez)
+    - Nose (cascade if available; else geometric fallback)
+    - Iris center from radial derivative search
+    + Temporal Stabilisation (iris + nose)
     """
     def __init__(self):
         self.face = cv2.CascadeClassifier(Config.cascade_path("haarcascade_frontalface_alt2.xml"))
@@ -489,7 +489,7 @@ class BlurFeatureExtractor:
     @staticmethod
     def blur_sigma_map(frame_bgr_640):
         """
-        Paper-aligned (Eq. 15):
+        From paper (Eq. 15):
           ratio = ||∇I(σ1)|| / ||∇I(σ)|| = σ^2 / (σ^2 + σ0^2)
         where:
           I(σ)  = acquired image (unknown blur σ)
@@ -526,10 +526,10 @@ class BlurFeatureExtractor:
     @staticmethod
     def depth_from_sigma_mm(sigma):
         """
-        Eq. (9) du papier (blur->depth) en mm:
+        From paper Eq. (9) (blur->depth) mm:
           z = (F f) / (f - F ± k F N σ)
-        Dans le papier, le signe dépend de z>=u ou pas.
-        Ici, on garde une version stable:
+        Sign depend z>=u or not.
+        More stable version:
           denom = (f - F) - k F N σ
           z = abs((F f) / denom)
         """
@@ -710,7 +710,7 @@ def train_vbmlr_all_pairs(dataset_dir: str, out_dir: str, nb_classes=9, min_samp
         p = os.path.join(dataset_dir, "features", f"class{c}.txt")
         X = read_features_file(p, expected_dim=8)
         if X is None or X.shape[0] < min_samples:
-            raise RuntimeError(f"Pas assez de samples pour class{c}: {p}")
+            raise RuntimeError(f"Not enough samples for class{c}: {p}")
         Xc[c] = X
 
     total = nb_classes * (nb_classes - 1)
@@ -742,7 +742,7 @@ def train_vbmlr_all_pairs(dataset_dir: str, out_dir: str, nb_classes=9, min_samp
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Gaze Tracking (Paper-aligned Blur Method + VBMLR)")
+        self.setWindowTitle("VBMLR - Eye Gaze Prediction")
 
         self.extractor = BlurFeatureExtractor()
         self.predictor = None
@@ -880,7 +880,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Intrinsics loaded",
                                     f"FX={Config.FX:.3f} FY={Config.FY:.3f} CX={Config.CX:.3f} CY={Config.CY:.3f}")
         else:
-            QMessageBox.warning(self, "Failed", "Impossible de lire camera_matrix depuis ce .yml")
+            QMessageBox.warning(self, "Failed", "Impossible to read camera_matrix from this .yml")
 
     def start_webcam(self):
         if self.cap is not None:
@@ -900,7 +900,7 @@ class MainWindow(QMainWindow):
 
     def new_acquisition(self):
         if self.dataset_root is None:
-            QMessageBox.warning(self, "Dataset missing", "Sélectionne d'abord un dataset folder.")
+            QMessageBox.warning(self, "Dataset missing", "Select first a dataset folder.")
             return
         self.mode = "RECORDING"
         self.curr_class = 1
@@ -915,7 +915,7 @@ class MainWindow(QMainWindow):
 
     def train_vbmlr(self):
         if self.dataset_root is None:
-            QMessageBox.warning(self, "Dataset missing", "Sélectionne d'abord un dataset folder.")
+            QMessageBox.warning(self, "Dataset missing", "Select first a dataset folder.")
             return
         out_dir = os.path.join(self.dataset_root, "disc")
         self.disc_dir = out_dir
