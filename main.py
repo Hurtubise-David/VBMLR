@@ -680,9 +680,10 @@ class MainWindow(QMainWindow):
             self.lbl_info.setText(f"feats=None ({dbg.get('reason','?')})")
         else:
             dx, dy = dbg.get("delta", (0, 0))
-            T = dbg.get("T", np.zeros(3))
-            zA, zB, zC = dbg.get("z_mm", (0, 0, 0))
-            self.lbl_info.setText(f"δ=({dx:.1f},{dy:.1f})  Tz={T[2]:.2f}cm  zA={zA:.1f}mm")
+            hp = dbg.get("hp_dbg", {})
+            refXYZ = hp.get("ref_XYZ", (0.0, 0.0, 0.0))  
+            Tz_cm = refXYZ[2] / 10.0
+            self.lbl_info.setText(f"δ=({dx:.1f},{dy:.1f})  Tz={Tz_cm:.2f}cm")
 
         self._update_grid_colors()
 
