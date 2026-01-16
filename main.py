@@ -38,6 +38,11 @@ class Config:
 
     NB_CLASSES = 9
 
+    # ROI nose (640x480) : center box to 100x100
+    NOSE_ROI_W, NOSE_ROI_H = 120, 120
+    NOSE_ROI_X = (CAM_W - NOSE_ROI_W) // 2
+    NOSE_ROI_Y = (CAM_H - NOSE_ROI_H) // 2
+
     @staticmethod
     def cascade_path(local_name: str) -> str:
         local_dir = os.path.join(os.path.dirname(__file__), "haarcascades")
@@ -702,10 +707,11 @@ class MainWindow(QMainWindow):
         if not ok or frame is None:
             return
         
-        dbg = {}
-        feats, frame_1024, dbg_extract = self.extractor.extract_features(frame)
-        if dbg_extract is not None:
-            dbg = dbg_extract
+        feats, frame_1024, dbg = self.extractor.extract_features(frame)
+        if frame_1024 is None:
+            frame_1024 = cv2.resize(frame, (Config.W_RESIZE, Config.H_RESIZE))
+
+        disp = frame_1024.copy()
         
         ci = dbg.get("ci", None)
         if ci is not None:
@@ -721,10 +727,6 @@ class MainWindow(QMainWindow):
             x = int(x * sx); y = int(y * sy)
             w = int(w * sx); h = int(h * sy)
             cv2.rectangle(disp, (x, y), (x+w, y+h), (0,0,255), 2)        
-
-        feats, frame_1024, dbg = self.extractor.extract_features(frame)
-        if frame_1024 is None:
-            frame_1024 = cv2.resize(frame, (Config.W_RESIZE, Config.H_RESIZE))
 
         if self.mode == "RECORDING":
             if self.cooldown > 0:
